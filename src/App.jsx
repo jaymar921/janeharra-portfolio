@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./App.css";
 
 /* ------------------------------------------------------------------ */
 /*  Design tokens (peach + navy palette, referenced via arbitrary      */
