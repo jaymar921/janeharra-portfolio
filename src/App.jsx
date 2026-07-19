@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import "./App.css";
 
 /* ------------------------------------------------------------------ */
 /*  Design tokens (peach + navy palette, referenced via arbitrary      */
@@ -25,13 +24,7 @@ const NAV_LINKS = [
 const SKILL_GROUPS = [
   {
     title: "Customer Support",
-    skills: [
-      "Customer Service",
-      "Technical Support",
-      "Email Support",
-      "Chat Support",
-      "Phone Handling",
-    ],
+    skills: ["Customer Service", "Technical Support", "Email Support", "Chat Support", "Phone Handling"],
   },
   {
     title: "Sales & Growth",
@@ -39,28 +32,27 @@ const SKILL_GROUPS = [
   },
   {
     title: "Operations & Quality",
-    skills: [
-      "Data Entry",
-      "Quality Assurance",
-      "Workforce Management",
-      "Training & Onboarding",
-    ],
+    skills: ["Data Entry", "Quality Assurance", "Workforce Management", "Training & Onboarding"],
   },
   {
     title: "Tools & Platforms",
-    skills: [
-      "Zendesk",
-      "HubSpot",
-      "Salesforce",
-      "Microsoft Word",
-      "Microsoft Excel",
-      "Microsoft PowerPoint",
-      "Data Sheets / Entry",
-    ],
+    skills: ["Zendesk", "HubSpot", "Salesforce", "Microsoft Word", "Microsoft Excel", "Microsoft PowerPoint", "Data Sheets / Entry"],
   },
 ];
 
 const EXPERIENCE = [
+  {
+    company: "Illuminary Peak",
+    role: "Human Resource Manager",
+    dates: "July 2026 — Present",
+    description:
+      "Lead HR operations for a fully remote Philippine startup, overseeing recruitment, onboarding, employee relations, and workplace policies for a distributed team.",
+    achievements: [
+      "Manage end-to-end hiring and onboarding for a remote-first team",
+      "Set up HR policies and processes to support a growing startup",
+      "Serve as the main point of contact for employee relations and engagement",
+    ],
+  },
   {
     company: "Concentrix",
     role: "Advisor I — Customer Service Representative",
@@ -120,14 +112,8 @@ const CERTIFICATIONS = [
 const HIGHLIGHTS = [
   { stat: "100%", label: "Quality Assurance score maintained on live calls" },
   { stat: "AHT", label: "Consistently within target handle-time benchmarks" },
-  {
-    stat: "Magna Cum Laude",
-    label: "Graduated with Latin Honors, BS Hospitality Management",
-  },
-  {
-    stat: "2 Roles",
-    label: "Cross-trained across CSR and Virtual Assistant functions",
-  },
+  { stat: "Magna Cum Laude", label: "Graduated with Latin Honors, BS Hospitality Management" },
+  { stat: "2 Roles", label: "Cross-trained across CSR and Virtual Assistant functions" },
 ];
 
 const TESTIMONIALS = [
@@ -219,16 +205,16 @@ function Nav() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#FFF8F0]/90 backdrop-blur border-b border-[#F0DCC4]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-white/50 backdrop-blur-xl backdrop-saturate-150 border-b border-white/60 shadow-[0_1px_20px_rgba(219,138,70,0.08)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         <button
           onClick={() => scrollTo("hero")}
-          className="flex items-center gap-2 font-serif text-lg text-[#1B2A41]"
+          className="flex items-center gap-2 font-serif text-lg text-[#1B2A41] flex-shrink-0"
         >
-          <span className="w-8 h-8 rounded-full bg-[#1B2A41] text-[#FFE9D6] flex items-center justify-center text-xs font-semibold">
+          <span className="w-8 h-8 rounded-full bg-[#1B2A41] text-[#FFE9D6] flex items-center justify-center text-xs font-semibold flex-shrink-0">
             JA
           </span>
-          Jane Abejar
+          <span className="hidden sm:inline">Jane Abejar</span>
         </button>
 
         <nav className="hidden md:flex items-center gap-7">
@@ -255,14 +241,7 @@ function Nav() {
           onClick={() => setOpen((o) => !o)}
           aria-label="Toggle menu"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {open ? (
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             ) : (
@@ -273,16 +252,22 @@ function Nav() {
       </div>
 
       {open && (
-        <div className="md:hidden bg-[#FFF8F0] border-t border-[#F0DCC4] px-6 py-4 flex flex-col gap-3">
+        <div className="md:hidden bg-white/60 backdrop-blur-xl border-t border-white/60 px-4 py-3 flex flex-col">
           {NAV_LINKS.map((link) => (
             <button
               key={link.id}
               onClick={() => scrollTo(link.id)}
-              className="text-left text-sm text-[#5B5147] hover:text-[#DB8A46] py-1"
+              className="text-left text-sm text-[#5B5147] hover:text-[#DB8A46] py-3 border-b border-[#F0DCC4]/60 last:border-0"
             >
               {link.label}
             </button>
           ))}
+          <a
+            href={`mailto:${CONTACT.email}`}
+            className="mt-3 inline-flex items-center justify-center rounded-full bg-[#1B2A41] text-[#FFE9D6] text-sm font-medium px-5 py-3"
+          >
+            Let's talk
+          </a>
         </div>
       )}
     </header>
@@ -299,16 +284,14 @@ function Hero() {
       <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[#F6C99B]/40 blur-3xl" />
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#F2A65A]/20 blur-3xl" />
 
-      <div className="relative max-w-6xl mx-auto px-6 sm:px-8 pt-16 pb-20 grid md:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8 pt-10 sm:pt-16 pb-16 sm:pb-20 grid md:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-12 items-center">
         <FadeIn>
           <div className="flex items-center gap-2 mb-5">
-            <span className="w-2 h-2 rounded-full bg-[#3FA35C]" />
-            <span className="text-sm text-[#5B5147]">
-              Available for hybrid or remote roles
-            </span>
+            <span className="w-2 h-2 rounded-full bg-[#3FA35C] flex-shrink-0" />
+            <span className="text-sm text-[#5B5147]">Available for hybrid or remote roles</span>
           </div>
 
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-[#1B2A41] leading-[1.1]">
+          <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl text-[#1B2A41] leading-[1.15] sm:leading-[1.1]">
             Jane Harra Marie C. Abejar
           </h1>
 
@@ -324,24 +307,17 @@ function Hero() {
           </p>
 
           <div className="mt-6 flex items-center gap-2 text-sm text-[#5B5147]">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z" />
               <circle cx="12" cy="10" r="2.5" />
             </svg>
             {CONTACT.location}
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
             <a
               href={`mailto:${CONTACT.email}`}
-              className="inline-flex items-center rounded-full bg-[#1B2A41] text-[#FFE9D6] text-sm font-medium px-6 py-3 hover:bg-[#28405e] transition-colors"
+              className="inline-flex items-center justify-center rounded-full bg-[#1B2A41] text-[#FFE9D6] text-sm font-medium px-6 py-3 hover:bg-[#28405e] transition-colors"
             >
               Email Jane
             </a>
@@ -349,13 +325,13 @@ function Hero() {
               href={CONTACT.linkedin}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center rounded-full border border-[#DB8A46] text-[#DB8A46] text-sm font-medium px-6 py-3 hover:bg-[#FFE9D6] transition-colors"
+              className="inline-flex items-center justify-center rounded-full border border-[#DB8A46] text-[#DB8A46] text-sm font-medium px-6 py-3 hover:bg-[#FFE9D6] transition-colors"
             >
               View LinkedIn
             </a>
             <a
               href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
-              className="inline-flex items-center rounded-full border border-[#E7DAC7] text-[#5B5147] text-sm font-medium px-6 py-3 hover:bg-white transition-colors"
+              className="inline-flex items-center justify-center rounded-full border border-[#E7DAC7] text-[#5B5147] text-sm font-medium px-6 py-3 hover:bg-white transition-colors"
             >
               {CONTACT.phone}
             </a>
@@ -372,11 +348,9 @@ function Hero() {
                 className="w-full h-80 object-cover"
               />
             </div>
-            <div className="absolute -bottom-5 -left-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-[#F0DCC4]">
+            <div className="absolute -bottom-5 -left-5 bg-white/60 backdrop-blur-xl rounded-2xl shadow-lg px-4 py-3 border border-white/70">
               <p className="text-xs text-[#8A7F70]">Latin Honors</p>
-              <p className="text-sm font-semibold text-[#1B2A41]">
-                Magna Cum Laude
-              </p>
+              <p className="text-sm font-semibold text-[#1B2A41]">Magna Cum Laude</p>
             </div>
           </div>
         </FadeIn>
@@ -398,8 +372,9 @@ function About() {
   ];
 
   return (
-    <section id="about" className="bg-white">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20 grid md:grid-cols-[1.3fr_1fr] gap-12">
+    <section id="about" className="relative bg-white overflow-hidden">
+      <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#F6C99B]/30 blur-3xl -translate-y-1/3 translate-x-1/4" />
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8 py-20 grid md:grid-cols-[1.3fr_1fr] gap-12">
         <FadeIn>
           <SectionHeading
             eyebrow="About"
@@ -407,23 +382,23 @@ function About() {
           />
           <p className="text-[#5B5147] leading-relaxed">
             I'm from Talisay City, Cebu, and graduated with a Bachelor of
-            Science in Hospitality Management in 2024. I currently work remotely
-            as an Advisor I — Customer Service Representative, supporting
-            members and ensuring a positive experience on every call. Before
-            that, in 2023, I worked as a Virtual Assistant, handling data entry
-            and administrative tasks with an emphasis on accuracy and
-            efficiency.
+            Science in Hospitality Management in 2024. I currently work
+            remotely as an Advisor I — Customer Service Representative,
+            supporting members and ensuring a positive experience on every
+            call. Before that, in 2023, I worked as a Virtual Assistant,
+            handling data entry and administrative tasks with an emphasis on
+            accuracy and efficiency.
           </p>
           <p className="mt-4 text-[#5B5147] leading-relaxed">
             I'm a dedicated, hardworking, and fast-learning professional with
-            strong communication, customer service, and organizational skills —
-            committed to continuous learning and to delivering high-quality work
-            in every role I take on.
+            strong communication, customer service, and organizational
+            skills — committed to continuous learning and to delivering
+            high-quality work in every role I take on.
           </p>
         </FadeIn>
 
         <FadeIn delay={120}>
-          <div className="bg-[#FFF8F0] rounded-2xl border border-[#F0DCC4] p-6 grid grid-cols-2 gap-5">
+          <div className="bg-white/50 backdrop-blur-md rounded-2xl border border-white/70 shadow-sm p-6 grid grid-cols-2 gap-5">
             {facts.map((f) => (
               <div key={f.label}>
                 <p className="text-xs uppercase tracking-wide text-[#B99A6E]">
@@ -448,7 +423,7 @@ function About() {
 function Skills() {
   return (
     <section id="skills" className="bg-[#FFF8F0]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
         <SectionHeading
           eyebrow="Skills"
           title="What I bring to the queue"
@@ -488,8 +463,11 @@ function Skills() {
 function Experience() {
   return (
     <section id="experience" className="bg-white">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
-        <SectionHeading eyebrow="Experience" title="Where I've worked" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
+        <SectionHeading
+          eyebrow="Experience"
+          title="Where I've worked"
+        />
 
         <div className="relative pl-8 sm:pl-10">
           <div className="absolute left-[7px] sm:left-[9px] top-2 bottom-2 w-px bg-[#F0DCC4]" />
@@ -515,10 +493,7 @@ function Experience() {
                   </p>
                   <ul className="mt-4 space-y-2">
                     {job.achievements.map((a) => (
-                      <li
-                        key={a}
-                        className="flex items-start gap-2 text-sm text-[#5B5147]"
-                      >
+                      <li key={a} className="flex items-start gap-2 text-sm text-[#5B5147]">
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#F2A65A] flex-shrink-0" />
                         {a}
                       </li>
@@ -541,25 +516,15 @@ function Experience() {
 function Education() {
   return (
     <section id="education" className="bg-[#FFF8F0]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
         <SectionHeading eyebrow="Education" title="Academic background" />
 
         <FadeIn>
           <div className="bg-white rounded-2xl border border-[#F0DCC4] shadow-sm p-8 max-w-2xl flex items-start gap-5">
             <div className="w-12 h-12 rounded-xl bg-[#1B2A41] flex items-center justify-center flex-shrink-0">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#FFE9D6"
-                strokeWidth="2"
-              >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFE9D6" strokeWidth="2">
                 <path d="M22 10 12 5 2 10l10 5 10-5Z" strokeLinejoin="round" />
-                <path
-                  d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"
-                  strokeLinejoin="round"
-                />
+                <path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5" strokeLinejoin="round" />
               </svg>
             </div>
             <div>
@@ -592,7 +557,7 @@ function Education() {
 function Certifications() {
   return (
     <section id="certifications" className="bg-white">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
         <SectionHeading
           eyebrow="Certifications"
           title="Training & recognitions"
@@ -625,7 +590,7 @@ function Certifications() {
 function Highlights() {
   return (
     <section id="highlights" className="bg-[#1B2A41]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
         <div className="max-w-2xl mb-12">
           <div className="flex items-center gap-2 mb-3">
             <span className="w-2 h-2 rounded-full bg-[#F2A65A]" />
@@ -642,7 +607,7 @@ function Highlights() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {HIGHLIGHTS.map((h, i) => (
             <FadeIn key={h.label} delay={i * 80}>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-6 h-full">
+              <div className="rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 p-6 h-full shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
                 <p className="font-serif text-2xl text-[#F2A65A]">{h.stat}</p>
                 <p className="mt-2 text-sm text-[#D8CFC2] leading-relaxed">
                   {h.label}
@@ -663,33 +628,24 @@ function Highlights() {
 function Testimonials() {
   return (
     <section id="testimonials" className="bg-[#FFF8F0]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
-        <SectionHeading eyebrow="Testimonials" title="What teams say" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20">
+        <SectionHeading
+          eyebrow="Testimonials"
+          title="What teams say"
+        />
 
         <div className="flex gap-5 overflow-x-auto pb-4 -mx-6 px-6 sm:mx-0 sm:px-0 snap-x snap-mandatory">
           {TESTIMONIALS.map((t, i) => (
-            <FadeIn
-              key={t.name + i}
-              delay={i * 90}
-              className="snap-start flex-shrink-0"
-            >
-              <div className="w-80 bg-white rounded-2xl border border-[#F0DCC4] shadow-sm p-6 h-full flex flex-col">
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="#F2A65A"
-                  className="mb-3"
-                >
+            <FadeIn key={t.name + i} delay={i * 90} className="snap-start flex-shrink-0">
+              <div className="w-[85vw] max-w-80 sm:w-80 bg-white rounded-2xl border border-[#F0DCC4] shadow-sm p-6 h-full flex flex-col">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#F2A65A" className="mb-3">
                   <path d="M7 7c-2.2 0-4 1.8-4 4v6h6v-6H6.2C6.4 9.5 7.7 8.3 9.5 8V6C8 6 7 6.3 7 7Zm10 0c-2.2 0-4 1.8-4 4v6h6v-6h-2.8c.2-1.5 1.5-2.7 3.3-3V6c-1.5 0-2.5.3-2.5 1Z" />
                 </svg>
                 <p className="text-sm text-[#5B5147] leading-relaxed flex-1">
                   {t.quote}
                 </p>
                 <div className="mt-4 pt-4 border-t border-[#F0DCC4]">
-                  <p className="text-sm font-semibold text-[#1B2A41]">
-                    {t.name}
-                  </p>
+                  <p className="text-sm font-semibold text-[#1B2A41]">{t.name}</p>
                   <p className="text-xs text-[#B99A6E]">{t.context}</p>
                 </div>
               </div>
@@ -730,9 +686,11 @@ function Contact() {
   ];
 
   return (
-    <section id="contact" className="bg-white">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-20">
-        <div className="rounded-3xl bg-[#FFE9D6] p-8 sm:p-12 grid md:grid-cols-[1fr_1fr] gap-10">
+    <section id="contact" className="relative bg-[#FFF8F0] overflow-hidden">
+      <div className="absolute top-10 right-10 w-72 h-72 rounded-full bg-[#F2A65A]/40 blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-[#F6C99B]/40 blur-3xl" />
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-8 py-20">
+        <div className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/60 p-6 sm:p-12 grid md:grid-cols-[1fr_1fr] gap-10">
           <FadeIn>
             <SectionEyebrow>Contact</SectionEyebrow>
             <h2 className="font-serif text-3xl sm:text-4xl text-[#1B2A41] leading-tight">
@@ -751,14 +709,14 @@ function Contact() {
           </FadeIn>
 
           <FadeIn delay={120}>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {items.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
                   target={item.href.startsWith("http") ? "_blank" : undefined}
                   rel="noreferrer"
-                  className="bg-white rounded-2xl p-5 border border-[#F0DCC4] hover:border-[#DB8A46] transition-colors"
+                  className="bg-white/50 backdrop-blur-md rounded-2xl p-5 border border-white/70 hover:bg-white/70 hover:border-[#DB8A46]/50 transition-colors"
                 >
                   <p className="text-xs uppercase tracking-wide text-[#B99A6E]">
                     {item.label}
@@ -783,10 +741,9 @@ function Contact() {
 function Footer() {
   return (
     <footer className="bg-[#1B2A41]">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
         <p className="text-sm text-[#D8CFC2]">
-          © {new Date().getFullYear()} Jane Harra Marie C. Abejar. All rights
-          reserved.
+          © {new Date().getFullYear()} Jane Harra Marie C. Abejar. All rights reserved.
         </p>
         <p className="text-xs text-[#8E9BB0]">
           Customer Service Representative &amp; Virtual Assistant
