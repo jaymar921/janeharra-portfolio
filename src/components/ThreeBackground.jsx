@@ -4,19 +4,24 @@ import * as THREE from "three";
 const CAMERA_Z = 14;
 const LOOK_AT_Y = 2;
 const FOV_DEG = 55;
-const OVERSCAN = 1.18;
-// Extra world-space padding added to each plane so it still fully covers
-// the screen once the camera pans off-center during the parallax tilt.
-const MAX_PAN_X = 1.1 + 0.18;
-const MAX_PAN_Y = 0.55 + 0.07;
+// One cover-fit of the whole photo, generous enough that panning the camera
+// never reaches a plane's edge.
+const OVERSCAN = 1.35;
+const REF_Z = 0;
 
-// Vertical slices of the same source photo, each rendered as its own flat
-// plane at a different depth. No 3D models: every visual comes straight
-// from public/calm-background.jpg.
+// The photo is tiled into horizontal strips, each on its own flat plane at
+// its own depth. No 3D models: every visual comes straight from
+// public/calm-background.jpg.
+//
+// All strips are sized from one shared reference fit, so at rest they
+// reconstruct the original photo exactly. Panning the camera shears them
+// apart by depth, which is the parallax. Strip boundaries deliberately fall
+// on featureless sky and water and cross-fade via the feather, and the tree
+// sits entirely inside the middle strip so it is never duplicated.
 const LAYER_DEFS = [
-  { name: "sky", z: -20, yFrac: [0, 0.63], masked: false },
-  { name: "mid", z: -4, yFrac: [0.34, 0.86], masked: true },
-  { name: "water", z: 6, yFrac: [0.56, 1], masked: false },
+  { name: "sky", z: -22, yFrac: [0, 0.34], feather: { top: 0, bottom: 0.18 } },
+  { name: "mid", z: -8, yFrac: [0.28, 0.96], feather: { top: 0.09, bottom: 0.06 } },
+  { name: "water", z: 2, yFrac: [0.93, 1], feather: { top: 0.45, bottom: 0 } },
 ];
 
 function supportsWebGL() {
@@ -41,12 +46,11 @@ function loadImage(src) {
   });
 }
 
-// Crops a vertical band [y0,y1] (fractions of image height) from the
-// source image. For the masked "mid" band, near-black silhouette pixels
-// (the tree, island, and its reflection) are kept opaque while everything
-// else (sky/water) is faded to transparent, so only the silhouette floats
-// on its own plane.
-function buildLayerCanvas(img, yFrac, masked) {
+// Cuts the strip [y0,y1] (fractions of image height) out of the photo and
+// fades its facing edges to transparent, so neighbouring strips cross-fade
+// instead of meeting at a visible line.
+function buildLayerCanvas(img, def) {
+  const { yFrac, feather } = def;
   const sw = img.width;
   const sy = Math.round(yFrac[0] * img.height);
   const sh = Math.round((yFrac[1] - yFrac[0]) * img.height);
@@ -57,23 +61,24 @@ function buildLayerCanvas(img, yFrac, masked) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, sy, sw, sh, 0, 0, sw, sh);
 
-  if (masked) {
+  const topFade = Math.round((feather?.top || 0) * sh);
+  const bottomFade = Math.round((feather?.bottom || 0) * sh);
+
+  if (topFade > 0 || bottomFade > 0) {
     const imageData = ctx.getImageData(0, 0, sw, sh);
     const d = imageData.data;
-    const THRESH_LOW = 26;
-    const THRESH_HIGH = 42;
-    for (let i = 0; i < d.length; i += 4) {
-      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      let alpha;
-      if (lum <= THRESH_LOW) alpha = 255;
-      else if (lum >= THRESH_HIGH) alpha = 0;
-      else alpha = Math.round(255 * (1 - (lum - THRESH_LOW) / (THRESH_HIGH - THRESH_LOW)));
-      d[i + 3] = alpha;
+    for (let y = 0; y < sh; y++) {
+      let a = 1;
+      if (topFade > 0 && y < topFade) a = y / topFade;
+      if (bottomFade > 0 && y > sh - bottomFade) a = Math.min(a, (sh - y) / bottomFade);
+      if (a >= 1) continue;
+      const alpha = Math.round(255 * a);
+      for (let x = 0; x < sw; x++) d[(y * sw + x) * 4 + 3] = alpha;
     }
     ctx.putImageData(imageData, 0, 0);
   }
 
-  return { canvas, aspect: sw / sh };
+  return { canvas };
 }
 
 export default function ThreeBackground() {
@@ -131,6 +136,8 @@ export default function ThreeBackground() {
       opacity: 0.85,
     });
     const stars = new THREE.Points(starGeometry, starMaterial);
+    starMaterial.depthTest = false;
+    stars.renderOrder = 5;
     scene.add(stars);
 
     /* ---------------- fireflies (near particle layer, warm flicker) ---------------- */
@@ -154,61 +161,74 @@ export default function ThreeBackground() {
       depthWrite: false,
     });
     const fireflies = new THREE.Points(fireflyGeometry, fireflyMaterial);
+    fireflyMaterial.depthTest = false;
+    fireflies.renderOrder = 30;
     scene.add(fireflies);
 
     /* ---------------- image parallax layers ---------------- */
     const layerMeshes = [];
+    let imageAspect = 16 / 10;
+
+    // Cover-fit the whole photo once, at a single reference depth. Every
+    // strip derives its size and position from this, so they all share one
+    // scale and line up into the original image at rest.
+    const referenceFit = () => {
+      const dRef = CAMERA_Z - REF_Z;
+      const frustumHeight = 2 * dRef * Math.tan(fovRad / 2);
+      const frustumWidth = frustumHeight * camera.aspect;
+      let width;
+      let height;
+      if (frustumWidth / frustumHeight > imageAspect) {
+        width = frustumWidth * OVERSCAN;
+        height = width / imageAspect;
+      } else {
+        height = frustumHeight * OVERSCAN;
+        width = height * imageAspect;
+      }
+      return { width, height, dRef };
+    };
 
     const fitLayer = (layer) => {
+      const ref = referenceFit();
       const d = CAMERA_Z - layer.z;
-      const frustumHeight = 2 * d * Math.tan(fovRad / 2);
-      const frustumWidth = frustumHeight * camera.aspect;
-      const bandFrac = layer.yFrac[1] - layer.yFrac[0];
+      // Scale by depth ratio so the strip covers the same screen area it
+      // would at the reference depth.
+      const k = d / ref.dRef;
 
-      // The camera pans (not just rotates) while tilting, so the visible
-      // window at each depth shifts by roughly the pan distance scaled by
-      // how far that plane sits from the camera relative to the look-at
-      // point. Pad the target size so the plane still fully covers the
-      // screen at the extremes of that pan range.
-      const panFactor = 1 + d / CAMERA_Z;
-      const targetHeight = frustumHeight * bandFrac + MAX_PAN_Y * panFactor * 2;
-      const targetWidth = frustumWidth + MAX_PAN_X * panFactor * 2;
+      const topY = LOOK_AT_Y + ref.height / 2 - layer.yFrac[0] * ref.height;
+      const bottomY = LOOK_AT_Y + ref.height / 2 - layer.yFrac[1] * ref.height;
+      const centerY = (topY + bottomY) / 2;
 
-      let planeWidth;
-      let planeHeight;
-      if (targetWidth / targetHeight > layer.aspect) {
-        planeWidth = targetWidth * OVERSCAN;
-        planeHeight = planeWidth / layer.aspect;
-      } else {
-        planeHeight = targetHeight * OVERSCAN;
-        planeWidth = planeHeight * layer.aspect;
-      }
-
-      const centerFrac = (layer.yFrac[0] + layer.yFrac[1]) / 2;
-      const worldY = LOOK_AT_Y + (0.5 - centerFrac) * frustumHeight;
-
-      layer.mesh.scale.set(planeWidth, planeHeight, 1);
-      layer.mesh.position.set(0, worldY, layer.z);
+      layer.mesh.scale.set(ref.width * k, (topY - bottomY) * k, 1);
+      layer.mesh.position.set(0, LOOK_AT_Y + (centerY - LOOK_AT_Y) * k, layer.z);
     };
 
     (async () => {
       try {
         const img = await loadImage("/calm-background.jpg");
         if (cancelled) return;
+        imageAspect = img.width / img.height;
 
-        LAYER_DEFS.forEach((def) => {
-          const { canvas, aspect } = buildLayerCanvas(img, def.yFrac, def.masked);
+        LAYER_DEFS.forEach((def, i) => {
+          const { canvas } = buildLayerCanvas(img, def);
           const texture = new THREE.CanvasTexture(canvas);
           texture.colorSpace = THREE.SRGBColorSpace;
+          // Every strip blends rather than occludes, so a nearer plane's
+          // faded edge never clips the scene behind it. Render order runs
+          // far to near so the alpha compositing stacks correctly.
           const material = new THREE.MeshBasicMaterial({
             map: texture,
-            transparent: def.masked,
-            depthWrite: !def.masked,
+            transparent: true,
+            depthWrite: false,
+            depthTest: false,
           });
           const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+          // 0 sky, 10 mid, 20 water. Stars sit at 5 (over the sky, behind
+          // the tree) and fireflies at 30 (in front of everything).
+          mesh.renderOrder = i * 10;
           scene.add(mesh);
 
-          const layer = { ...def, aspect, mesh, texture, canvas };
+          const layer = { ...def, mesh, texture, canvas };
           layerMeshes.push(layer);
           fitLayer(layer);
         });
