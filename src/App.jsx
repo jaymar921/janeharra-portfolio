@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Window from "./components/Window";
 import DesktopIcon from "./components/DesktopIcon";
+import LoadingScreen from "./components/LoadingScreen";
+import CursorGlow from "./components/CursorGlow";
+
+const ThreeBackground = lazy(() => import("./components/ThreeBackground"));
 import "./App.css";
 
 /* ------------------------------------------------------------------ */
@@ -525,7 +529,17 @@ export default function App() {
   const [windows, setWindows] = useState({});
   const [activeId, setActiveId] = useState(null);
   const [iconPositions, setIconPositions] = useState(computeInitialIconPositions);
+  const [bootPhase, setBootPhase] = useState("boot"); // boot | fade | done
   const cascadeRef = useRef(0);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setBootPhase("fade"), 1450);
+    const doneTimer = setTimeout(() => setBootPhase("done"), 1900);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, []);
 
   const moveIcon = (id, x, y) => {
     setIconPositions((prev) => ({ ...prev, [id]: { x, y } }));
@@ -646,33 +660,77 @@ export default function App() {
           50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(166,227,161,0); }
         }
         .pulse-dot { animation: pulse-dot 2.2s ease-in-out infinite; }
+
+        @keyframes window-minimize-out {
+          from { transform: scale(1) translateY(0); opacity: 1; }
+          to { transform: scale(0.05) translateY(60vh); opacity: 0; }
+        }
+        .window-minimize-out { animation: window-minimize-out 260ms cubic-bezier(0.4,0,0.2,1) forwards; }
+
+        @keyframes window-close-out {
+          from { transform: scale(1); opacity: 1; }
+          to { transform: scale(0.92); opacity: 0; }
+        }
+        .window-close-out { animation: window-close-out 190ms ease-in forwards; }
+
+        @keyframes orb-drift-1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(40px, 30px) scale(1.08); }
+        }
+        @keyframes orb-drift-2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-35px, 25px) scale(1.05); }
+        }
+        @keyframes orb-drift-3 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(25px, -30px) scale(1.1); }
+        }
+        .orb-drift-1 { animation: orb-drift-1 16s ease-in-out infinite; }
+        .orb-drift-2 { animation: orb-drift-2 20s ease-in-out infinite; }
+        .orb-drift-3 { animation: orb-drift-3 18s ease-in-out infinite; }
+
+        @keyframes taskbar-pill-in {
+          from { opacity: 0; transform: translateY(10px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-taskbar-pill-in { animation: taskbar-pill-in 220ms cubic-bezier(0.4,0,0.2,1); }
+
+        @keyframes boot-logo-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(203,166,247,0.4); }
+          50% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(203,166,247,0); }
+        }
+        .boot-logo-pulse { animation: boot-logo-pulse 1.6s ease-in-out infinite; }
+
+        @keyframes boot-progress-fill {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .boot-progress-fill { animation: boot-progress-fill 1.5s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+        @keyframes boot-line-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .boot-line { animation: boot-line-in 300ms ease-out forwards; }
       `}</style>
+
+      {bootPhase !== "done" && <LoadingScreen fading={bootPhase === "fade"} />}
+      <CursorGlow />
 
       {/* Wallpaper: dark gradient base */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-10%,#232438_0%,#11111b_55%)]" />
 
-      {/* Subtle dot-grid texture */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.15]"
-        style={{
-          backgroundImage: "radial-gradient(rgba(205,214,244,0.5) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
+      {/* Live 3D wallpaper — moonlit island, swaying tree, reflective water */}
+      <Suspense fallback={null}>
+        <ThreeBackground />
+      </Suspense>
+      <div className="pointer-events-none absolute inset-0 bg-[#11111b]/35" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,27,0.3)_0%,rgba(17,17,27,0)_35%,rgba(17,17,27,0.5)_100%)]" />
 
-      {/* Wallpaper art — headset / support-chat motif, blended into the rice desktop */}
-      <img
-        src="/wallpaper.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-screen"
-      />
-
-      {/* Ambient neon glow orbs */}
-      <div className="pointer-events-none absolute -top-32 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#cba6f7]/20 blur-[110px]" />
-      <div className="pointer-events-none absolute top-1/2 -left-24 w-96 h-96 rounded-full bg-[#89b4fa]/20 blur-[110px]" />
-      <div className="pointer-events-none absolute -bottom-32 right-1/4 w-[26rem] h-[26rem] rounded-full bg-[#94e2d5]/15 blur-[110px]" />
-      <div className="pointer-events-none absolute bottom-10 left-1/3 w-72 h-72 rounded-full bg-[#f5c2e7]/10 blur-[100px]" />
+      {/* Ambient neon glow orbs — slow drift for a living rice desktop */}
+      <div className="pointer-events-none absolute -top-32 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#cba6f7]/15 blur-[110px] orb-drift-1" />
+      <div className="pointer-events-none absolute top-1/2 -left-24 w-96 h-96 rounded-full bg-[#89b4fa]/15 blur-[110px] orb-drift-2" />
+      <div className="pointer-events-none absolute -bottom-32 right-1/4 w-[26rem] h-[26rem] rounded-full bg-[#94e2d5]/10 blur-[110px] orb-drift-3" />
 
       {/* Desktop icons — freely draggable anywhere on the desktop */}
       <div className="absolute inset-0 pb-14">
@@ -759,7 +817,7 @@ export default function App() {
                       focusWindow(id);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium font-mono flex-shrink-0 transition-colors border ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium font-mono flex-shrink-0 transition-colors border animate-taskbar-pill-in active:scale-95 ${
                     w.minimized
                       ? "bg-white/5 border-white/10 text-[#6c7086]"
                       : focused

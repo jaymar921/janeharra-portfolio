@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const TASKBAR_HEIGHT = 56;
 const TITLEBAR_HEIGHT = 44;
+const MINIMIZE_MS = 260;
+const CLOSE_MS = 190;
 
 export default function Window({
   id,
@@ -25,11 +27,43 @@ export default function Window({
 }) {
   const dragState = useRef(null);
   const [dragging, setDragging] = useState(false);
+  const [phase, setPhase] = useState("enter"); // enter | idle | minimizing | closing
+  const timerRef = useRef(null);
+  const wasMinimized = useRef(minimized);
 
-  if (minimized) return null;
+  useEffect(() => {
+    if (phase === "enter") {
+      const t = setTimeout(() => setPhase("idle"), 180);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    // Replay the pop-in animation whenever the window is restored from the taskbar.
+    if (wasMinimized.current && !minimized) {
+      setPhase("enter");
+    }
+    wasMinimized.current = minimized;
+  }, [minimized]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const requestMinimize = () => {
+    if (phase === "minimizing" || phase === "closing") return;
+    setPhase("minimizing");
+    timerRef.current = setTimeout(onMinimize, MINIMIZE_MS);
+  };
+
+  const requestClose = () => {
+    if (phase === "closing") return;
+    setPhase("closing");
+    timerRef.current = setTimeout(onClose, CLOSE_MS);
+  };
+
+  if (minimized && phase !== "enter") return null;
 
   const handlePointerDown = (e) => {
-    if (maximized) {
+    if (maximized || phase !== "idle") {
       onFocus();
       return;
     }
@@ -93,9 +127,23 @@ export default function Window({
           : "0 20px 60px -20px rgba(0,0,0,0.65)",
       };
 
+  const animClass =
+    phase === "enter"
+      ? "animate-window-in"
+      : phase === "minimizing"
+      ? "window-minimize-out"
+      : phase === "closing"
+      ? "window-close-out"
+      : "";
+
+  const layoutTransition =
+    dragging || phase !== "idle"
+      ? "transition-[border-color,box-shadow] duration-200"
+      : "transition-[left,top,width,height,border-color,box-shadow] duration-200 ease-out";
+
   return (
     <div
-      className="fixed rounded-2xl overflow-hidden border flex flex-col animate-window-in bg-[#1e1e2e]/50 backdrop-blur-2xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-200"
+      className={`fixed rounded-2xl overflow-hidden border flex flex-col origin-bottom bg-[#1e1e2e]/50 backdrop-blur-2xl backdrop-saturate-150 ${layoutTransition} ${animClass}`}
       style={style}
       onPointerDown={onFocus}
     >
@@ -127,10 +175,10 @@ export default function Window({
             aria-label="Minimize"
             onClick={(e) => {
               e.stopPropagation();
-              onMinimize();
+              requestMinimize();
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-white/10 hover:text-[#cdd6f4] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-white/10 hover:text-[#cdd6f4] active:scale-90 transition-[background-color,color,transform] duration-150"
           >
             <svg width="10" height="10" viewBox="0 0 10 10">
               <rect x="0" y="4.5" width="10" height="1.4" rx="0.7" fill="currentColor" />
@@ -143,7 +191,7 @@ export default function Window({
               onToggleMaximize();
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-white/10 hover:text-[#cdd6f4] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-white/10 hover:text-[#cdd6f4] active:scale-90 transition-[background-color,color,transform] duration-150"
           >
             {maximized ? (
               <svg width="10" height="10" viewBox="0 0 10 10">
@@ -160,10 +208,10 @@ export default function Window({
             aria-label="Close"
             onClick={(e) => {
               e.stopPropagation();
-              onClose();
+              requestClose();
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-[#f38ba8] hover:text-[#11111b] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#a6adc8] hover:bg-[#f38ba8] hover:text-[#11111b] active:scale-90 transition-[background-color,color,transform] duration-150"
           >
             <svg width="10" height="10" viewBox="0 0 10 10">
               <path d="M0.5 0.5 9.5 9.5M9.5 0.5 0.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
