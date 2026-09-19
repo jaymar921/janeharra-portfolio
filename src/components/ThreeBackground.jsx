@@ -5,6 +5,10 @@ const CAMERA_Z = 14;
 const LOOK_AT_Y = 2;
 const FOV_DEG = 55;
 const OVERSCAN = 1.18;
+// Extra world-space padding added to each plane so it still fully covers
+// the screen once the camera pans off-center during the parallax tilt.
+const MAX_PAN_X = 1.1 + 0.18;
+const MAX_PAN_Y = 0.55 + 0.07;
 
 // Vertical slices of the same source photo, each rendered as its own flat
 // plane at a different depth. No 3D models: every visual comes straight
@@ -160,8 +164,15 @@ export default function ThreeBackground() {
       const frustumHeight = 2 * d * Math.tan(fovRad / 2);
       const frustumWidth = frustumHeight * camera.aspect;
       const bandFrac = layer.yFrac[1] - layer.yFrac[0];
-      const targetHeight = frustumHeight * bandFrac;
-      const targetWidth = frustumWidth;
+
+      // The camera pans (not just rotates) while tilting, so the visible
+      // window at each depth shifts by roughly the pan distance scaled by
+      // how far that plane sits from the camera relative to the look-at
+      // point. Pad the target size so the plane still fully covers the
+      // screen at the extremes of that pan range.
+      const panFactor = 1 + d / CAMERA_Z;
+      const targetHeight = frustumHeight * bandFrac + MAX_PAN_Y * panFactor * 2;
+      const targetWidth = frustumWidth + MAX_PAN_X * panFactor * 2;
 
       let planeWidth;
       let planeHeight;
@@ -244,11 +255,11 @@ export default function ThreeBackground() {
       currentPointer.x += (targetPointer.x - currentPointer.x) * 0.055;
       currentPointer.y += (targetPointer.y - currentPointer.y) * 0.055;
 
-      const idleX = Math.sin(t * 0.08) * 0.25;
-      const idleY = Math.sin(t * 0.12) * 0.1;
+      const idleX = Math.sin(t * 0.08) * 0.18;
+      const idleY = Math.sin(t * 0.12) * 0.07;
 
-      camera.position.x = currentPointer.x * 1.6 + idleX;
-      camera.position.y = LOOK_AT_Y - currentPointer.y * 0.9 + idleY;
+      camera.position.x = currentPointer.x * 1.1 + idleX;
+      camera.position.y = LOOK_AT_Y - currentPointer.y * 0.55 + idleY;
       camera.rotation.z = -currentPointer.x * 0.025;
       camera.lookAt(lookTarget);
 
