@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1260" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="bgGlow1" cx="15%" cy="10%" r="55%">
+      <stop offset="0%" stop-color="#cba6f7" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#cba6f7" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="bgGlow2" cx="85%" cy="85%" r="60%">
+      <stop offset="0%" stop-color="#89b4fa" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#89b4fa" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="bgGlow3" cx="90%" cy="15%" r="45%">
+      <stop offset="0%" stop-color="#94e2d5" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#94e2d5" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="nameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#cba6f7" />
+      <stop offset="45%" stop-color="#89b4fa" />
+      <stop offset="100%" stop-color="#94e2d5" />
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#cba6f7" />
+      <stop offset="50%" stop-color="#89b4fa" />
+      <stop offset="100%" stop-color="#94e2d5" />
+    </linearGradient>
+    <linearGradient id="headsetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cba6f7" />
+      <stop offset="100%" stop-color="#89b4fa" />
+    </linearGradient>
+    <linearGradient id="bubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fab387" />
+      <stop offset="100%" stop-color="#f5c2e7" />
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.2" cy="1.2" r="1.2" fill="#cdd6f4" opacity="0.14" />
+    </pattern>
+  </defs>
+
+  <!-- base -->
+  <rect width="1200" height="630" fill="#11111b" />
+  <rect width="1200" height="630" fill="url(#dots)" />
+  <rect width="1200" height="630" fill="url(#bgGlow1)" />
+  <rect width="1200" height="630" fill="url(#bgGlow2)" />
+  <rect width="1200" height="630" fill="url(#bgGlow3)" />
+
+  <!-- top accent line -->
+  <rect x="0" y="0" width="1200" height="5" fill="url(#lineGrad)" />
+
+  <!-- headset motif, right side -->
+  <g opacity="0.65" transform="translate(840,120)">
+    <circle cx="120" cy="120" r="150" fill="none" stroke="url(#headsetGrad)" stroke-width="1" opacity="0.25" />
+    <path d="M40,150 C40,50 200,50 200,150" fill="none" stroke="url(#headsetGrad)" stroke-width="9" stroke-linecap="round" />
+    <rect x="14" y="140" width="56" height="100" rx="24" fill="none" stroke="url(#headsetGrad)" stroke-width="9" />
+    <rect x="198" y="140" width="56" height="100" rx="24" fill="none" stroke="url(#headsetGrad)" stroke-width="9" />
+    <path d="M40,220 C62,286 124,308 170,300" fill="none" stroke="#94e2d5" stroke-width="7" stroke-linecap="round" />
+    <circle cx="174" cy="300" r="13" fill="#94e2d5" />
+    <circle cx="174" cy="300" r="42" fill="none" stroke="#94e2d5" stroke-width="3" stroke-dasharray="4 12" opacity="0.6" />
+    <circle cx="174" cy="300" r="72" fill="none" stroke="#94e2d5" stroke-width="2.5" stroke-dasharray="4 14" opacity="0.4" />
+  </g>
+
+  <!-- chat bubble motif, lower right -->
+  <g opacity="0.55" transform="translate(920,420)">
+    <rect x="0" y="0" width="190" height="120" rx="26" fill="none" stroke="url(#bubbleGrad)" stroke-width="6" />
+    <path d="M40,118 L20,164 L86,120" fill="none" stroke="url(#bubbleGrad)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+    <circle cx="55" cy="55" r="8" fill="url(#bubbleGrad)" />
+    <circle cx="95" cy="55" r="8" fill="url(#bubbleGrad)" />
+    <circle cx="135" cy="55" r="8" fill="url(#bubbleGrad)" />
+  </g>
+
+  <!-- eyebrow tag -->
+  <g transform="translate(88,205)">
+    <circle cx="7" cy="7" r="7" fill="#a6e3a1" />
+    <text x="24" y="13" font-family="Consolas, 'Courier New', monospace" font-size="20" fill="#a6e3a1" letter-spacing="2">OPEN TO WORK — REMOTE / HYBRID</text>
+  </g>
+
+  <!-- name -->
+  <text x="86" y="320" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="76" fill="url(#nameGrad)">Jane Harra Marie</text>
+  <text x="86" y="405" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="76" fill="url(#nameGrad)">C. Abejar</text>
+
+  <!-- title -->
+  <text x="88" y="460" font-family="Consolas, 'Courier New', monospace" font-weight="700" font-size="30" fill="#fab387">Customer Service Representative &amp; Virtual Assistant</text>
+
+  <!-- footer bar -->
+  <rect x="0" y="560" width="1200" height="1" fill="#313244" />
+  <g transform="translate(88,600)">
+    <circle cx="8" cy="-5" r="8" fill="none" stroke="#89b4fa" stroke-width="2" />
+    <text x="26" y="0" font-family="Consolas, 'Courier New', monospace" font-size="22" fill="#a6adc8">janeharraabejar.vercel.app</text>
+  </g>
+</svg>

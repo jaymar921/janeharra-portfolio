@@ -2,8 +2,4 @@
 User-agent: *
 Allow: /
 
-# Disallow paths that do not contain public content
-# Disallow: /
-
-# Host and Sitemap locations
-Host: https://janeharraabejar.vercel.app
+Sitemap: https://janeharraabejar.vercel.app/sitemap.xml
