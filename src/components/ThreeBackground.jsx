@@ -1,6 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Reflector } from "three/examples/jsm/objects/Reflector.js";
+
+const CAMERA_Z = 14;
+const LOOK_AT_Y = 2;
+const FOV_DEG = 55;
+const OVERSCAN = 1.18;
+
+// Vertical slices of the same source photo, each rendered as its own flat
+// plane at a different depth. No 3D models: every visual comes straight
+// from public/calm-background.jpg.
+const LAYER_DEFS = [
+  { name: "sky", z: -20, yFrac: [0, 0.63], masked: false },
+  { name: "mid", z: -4, yFrac: [0.34, 0.86], masked: true },
+  { name: "water", z: 6, yFrac: [0.56, 1], masked: false },
+];
 
 function supportsWebGL() {
   try {
@@ -14,100 +27,49 @@ function supportsWebGL() {
   }
 }
 
-function buildGlowTexture() {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  const gradient = ctx.createRadialGradient(
-    size / 2,
-    size / 2,
-    0,
-    size / 2,
-    size / 2,
-    size / 2
-  );
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.35, "rgba(230,235,255,0.55)");
-  gradient.addColorStop(1, "rgba(230,235,255,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
-// A flat, hand-drawn tree-on-an-island silhouette, used as a 2D billboard
-// inside the 3D scene so it still tilts and reflects like everything else.
-function buildTreeIslandTexture() {
-  const w = 640;
-  const h = 560;
+// Crops a vertical band [y0,y1] (fractions of image height) from the
+// source image. For the masked "mid" band, near-black silhouette pixels
+// (the tree, island, and its reflection) are kept opaque while everything
+// else (sky/water) is faded to transparent, so only the silhouette floats
+// on its own plane.
+function buildLayerCanvas(img, yFrac, masked) {
+  const sw = img.width;
+  const sy = Math.round(yFrac[0] * img.height);
+  const sh = Math.round((yFrac[1] - yFrac[0]) * img.height);
+
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = sw;
+  canvas.height = sh;
   const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, sy, sw, sh, 0, 0, sw, sh);
 
-  const cx = w / 2;
-  const baseY = h - 150;
-
-  // island mound
-  ctx.beginPath();
-  ctx.ellipse(cx, baseY, 190, 46, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "#05070d";
-  ctx.fill();
-
-  // trunk
-  ctx.beginPath();
-  ctx.moveTo(cx - 10, baseY - 10);
-  ctx.quadraticCurveTo(cx - 22, baseY - 160, cx - 6, baseY - 260);
-  ctx.lineTo(cx + 10, baseY - 258);
-  ctx.quadraticCurveTo(cx + 16, baseY - 150, cx + 12, baseY - 10);
-  ctx.closePath();
-  ctx.fillStyle = "#04060a";
-  ctx.fill();
-
-  // canopy (irregular overlapping puffs for an organic silhouette)
-  const puffs = [
-    [cx, baseY - 300, 115],
-    [cx + 80, baseY - 270, 70],
-    [cx - 90, baseY - 275, 68],
-    [cx + 25, baseY - 350, 62],
-    [cx - 35, baseY - 345, 60],
-    [cx, baseY - 250, 90],
-  ];
-  ctx.fillStyle = "#03060a";
-  puffs.forEach(([px, py, r]) => {
-    ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // soft moonlit rim light along the upper-right edge of the canopy
-  ctx.save();
-  ctx.globalCompositeOperation = "source-atop";
-  const rim = ctx.createRadialGradient(cx + 150, baseY - 420, 20, cx + 60, baseY - 300, 260);
-  rim.addColorStop(0, "rgba(180,195,255,0.55)");
-  rim.addColorStop(0.4, "rgba(150,170,230,0.12)");
-  rim.addColorStop(1, "rgba(150,170,230,0)");
-  ctx.fillStyle = rim;
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-
-  // grass tufts at the base
-  ctx.strokeStyle = "#05070d";
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 10; i++) {
-    const gx = cx - 150 + i * 32 + (Math.random() - 0.5) * 10;
-    ctx.beginPath();
-    ctx.moveTo(gx, baseY + 6);
-    ctx.quadraticCurveTo(gx + 6, baseY - 14, gx + 14, baseY - 4);
-    ctx.stroke();
+  if (masked) {
+    const imageData = ctx.getImageData(0, 0, sw, sh);
+    const d = imageData.data;
+    const THRESH_LOW = 26;
+    const THRESH_HIGH = 42;
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      let alpha;
+      if (lum <= THRESH_LOW) alpha = 255;
+      else if (lum >= THRESH_HIGH) alpha = 0;
+      else alpha = Math.round(255 * (1 - (lum - THRESH_LOW) / (THRESH_HIGH - THRESH_LOW)));
+      d[i + 3] = alpha;
+    }
+    ctx.putImageData(imageData, 0, 0);
   }
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return { texture: tex, aspect: w / h };
+  return { canvas, aspect: sw / sh };
 }
 
 export default function ThreeBackground() {
@@ -118,18 +80,20 @@ export default function ThreeBackground() {
     if (!webglOk) return;
     const mount = mountRef.current;
     if (!mount) return;
+    let cancelled = false;
 
     const isSmall = window.innerWidth < 640;
+    const fovRad = (FOV_DEG * Math.PI) / 180;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      55,
+      FOV_DEG,
       mount.clientWidth / mount.clientHeight,
       0.1,
       200
     );
-    const lookTarget = new THREE.Vector3(0, 2, 0);
-    camera.position.set(0, 2.6, 14);
+    const lookTarget = new THREE.Vector3(0, LOOK_AT_Y, 0);
+    camera.position.set(0, LOOK_AT_Y, CAMERA_Z);
     camera.lookAt(lookTarget);
 
     const renderer = new THREE.WebGLRenderer({
@@ -142,73 +106,16 @@ export default function ThreeBackground() {
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
-    /* ---------------- water (reflective) ---------------- */
-    const waterGeometry = new THREE.PlaneGeometry(200, 200);
-    const water = new Reflector(waterGeometry, {
-      clipBias: 0.003,
-      textureWidth: isSmall ? 512 : 1024,
-      textureHeight: isSmall ? 512 : 1024,
-      color: 0x0c1830,
-    });
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = 0;
-    scene.add(water);
-
-    const waterTint = new THREE.Mesh(
-      new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshBasicMaterial({ color: 0x11224a, transparent: true, opacity: 0.35 })
-    );
-    waterTint.rotation.x = -Math.PI / 2;
-    waterTint.position.y = 0.001;
-    scene.add(waterTint);
-
-    /* ---------------- flat 2D tree-on-island billboard ---------------- */
-    const { texture: treeTexture, aspect: treeAspect } = buildTreeIslandTexture();
-    const treeHeight = 4.4;
-    const treeWidth = treeHeight * treeAspect;
-    const treeGroup = new THREE.Group();
-    treeGroup.position.set(0, treeHeight / 2 - 0.55, -0.5);
-    scene.add(treeGroup);
-
-    const treeBillboard = new THREE.Mesh(
-      new THREE.PlaneGeometry(treeWidth, treeHeight),
-      new THREE.MeshBasicMaterial({ map: treeTexture, transparent: true })
-    );
-    treeGroup.add(treeBillboard);
-
-    /* ---------------- moon ---------------- */
-    const moon = new THREE.Mesh(
-      new THREE.SphereGeometry(1.1, 24, 24),
-      new THREE.MeshBasicMaterial({ color: 0xf2f4ff })
-    );
-    moon.position.set(3.4, 3.6, -10);
-    scene.add(moon);
-
-    const glowTexture = buildGlowTexture();
-    const moonGlow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: glowTexture,
-        color: 0xbcd0ff,
-        transparent: true,
-        opacity: 0.75,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    moonGlow.scale.set(7, 7, 1);
-    moonGlow.position.copy(moon.position);
-    scene.add(moonGlow);
-
-    /* ---------------- stars (far layer) ---------------- */
-    const starCount = isSmall ? 260 : 480;
+    /* ---------------- stars (far particle layer) ---------------- */
+    const starCount = isSmall ? 220 : 420;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
       const radius = 40 + Math.random() * 40;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.random() * 0.55 * Math.PI * 0.9;
       starPositions[i * 3] = Math.cos(theta) * radius * Math.sin(phi + 0.2);
-      starPositions[i * 3 + 1] = 4 + Math.random() * 26;
-      starPositions[i * 3 + 2] = -Math.sin(theta) * radius * Math.sin(phi + 0.2) - 10;
+      starPositions[i * 3 + 1] = 6 + Math.random() * 24;
+      starPositions[i * 3 + 2] = -Math.sin(theta) * radius * Math.sin(phi + 0.2) - 15;
     }
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
@@ -222,15 +129,15 @@ export default function ThreeBackground() {
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
 
-    /* ---------------- fireflies (near layer, warm flicker) ---------------- */
-    const fireflyCount = isSmall ? 22 : 40;
+    /* ---------------- fireflies (near particle layer, warm flicker) ---------------- */
+    const fireflyCount = isSmall ? 20 : 36;
     const fireflyGeometry = new THREE.BufferGeometry();
     const fireflyPositions = new Float32Array(fireflyCount * 3);
     const fireflySeeds = new Float32Array(fireflyCount);
     for (let i = 0; i < fireflyCount; i++) {
       fireflyPositions[i * 3] = (Math.random() - 0.5) * 5.5;
-      fireflyPositions[i * 3 + 1] = Math.random() * 2.2 + 0.15;
-      fireflyPositions[i * 3 + 2] = Math.random() * 2.5 + 0.5;
+      fireflyPositions[i * 3 + 1] = Math.random() * 2.2 + 0.4;
+      fireflyPositions[i * 3 + 2] = Math.random() * 2.5 + 1.5;
       fireflySeeds[i] = Math.random() * Math.PI * 2;
     }
     fireflyGeometry.setAttribute("position", new THREE.BufferAttribute(fireflyPositions, 3));
@@ -245,28 +152,60 @@ export default function ThreeBackground() {
     const fireflies = new THREE.Points(fireflyGeometry, fireflyMaterial);
     scene.add(fireflies);
 
-    /* ---------------- drifting air particles (visible breeze) ---------------- */
-    const dustCount = isSmall ? 36 : 70;
-    const dustGeometry = new THREE.BufferGeometry();
-    const dustPositions = new Float32Array(dustCount * 3);
-    const dustSeeds = new Float32Array(dustCount);
-    for (let i = 0; i < dustCount; i++) {
-      dustPositions[i * 3] = (Math.random() - 0.5) * 10;
-      dustPositions[i * 3 + 1] = Math.random() * 4 + 0.2;
-      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 6 + 1;
-      dustSeeds[i] = Math.random() * Math.PI * 2;
-    }
-    dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
-    const dustMaterial = new THREE.PointsMaterial({
-      color: 0xcfe0ff,
-      size: 0.045,
-      transparent: true,
-      opacity: 0.5,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const dust = new THREE.Points(dustGeometry, dustMaterial);
-    scene.add(dust);
+    /* ---------------- image parallax layers ---------------- */
+    const layerMeshes = [];
+
+    const fitLayer = (layer) => {
+      const d = CAMERA_Z - layer.z;
+      const frustumHeight = 2 * d * Math.tan(fovRad / 2);
+      const frustumWidth = frustumHeight * camera.aspect;
+      const bandFrac = layer.yFrac[1] - layer.yFrac[0];
+      const targetHeight = frustumHeight * bandFrac;
+      const targetWidth = frustumWidth;
+
+      let planeWidth;
+      let planeHeight;
+      if (targetWidth / targetHeight > layer.aspect) {
+        planeWidth = targetWidth * OVERSCAN;
+        planeHeight = planeWidth / layer.aspect;
+      } else {
+        planeHeight = targetHeight * OVERSCAN;
+        planeWidth = planeHeight * layer.aspect;
+      }
+
+      const centerFrac = (layer.yFrac[0] + layer.yFrac[1]) / 2;
+      const worldY = LOOK_AT_Y + (0.5 - centerFrac) * frustumHeight;
+
+      layer.mesh.scale.set(planeWidth, planeHeight, 1);
+      layer.mesh.position.set(0, worldY, layer.z);
+    };
+
+    (async () => {
+      try {
+        const img = await loadImage("/calm-background.jpg");
+        if (cancelled) return;
+
+        LAYER_DEFS.forEach((def) => {
+          const { canvas, aspect } = buildLayerCanvas(img, def.yFrac, def.masked);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: def.masked,
+            depthWrite: !def.masked,
+          });
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+          scene.add(mesh);
+
+          const layer = { ...def, aspect, mesh, texture, canvas };
+          layerMeshes.push(layer);
+          fitLayer(layer);
+        });
+      } catch {
+        // If the photo fails to load, the particle layers still render on
+        // top of the page's own dark gradient background.
+      }
+    })();
 
     /* ---------------- pointer / drag parallax tilt ---------------- */
     const targetPointer = { x: 0, y: 0 };
@@ -287,22 +226,7 @@ export default function ThreeBackground() {
     const animate = () => {
       const t = clock.getElapsedTime();
 
-      // breeze: gentle paper-like sway on the flat tree billboard
-      treeGroup.rotation.z = Math.sin(t * 1.1) * 0.035 + Math.sin(t * 0.37) * 0.012;
-      treeGroup.rotation.y = Math.sin(t * 0.5) * 0.02;
-
-      // drifting dust / visible air
-      const dustPos = dustGeometry.attributes.position.array;
-      for (let i = 0; i < dustCount; i++) {
-        const seed = dustSeeds[i];
-        dustPos[i * 3] += Math.sin(t * 0.5 + seed) * 0.0025;
-        dustPos[i * 3 + 1] += 0.0018;
-        dustPos[i * 3 + 2] += Math.cos(t * 0.4 + seed) * 0.0015;
-        if (dustPos[i * 3 + 1] > 4.4) dustPos[i * 3 + 1] = 0.1;
-      }
-      dustGeometry.attributes.position.needsUpdate = true;
-
-      // fireflies: slow wander + individual flicker
+      // fireflies: slow wander + flicker
       const flyPos = fireflyGeometry.attributes.position.array;
       for (let i = 0; i < fireflyCount; i++) {
         const seed = fireflySeeds[i];
@@ -324,7 +248,7 @@ export default function ThreeBackground() {
       const idleY = Math.sin(t * 0.12) * 0.1;
 
       camera.position.x = currentPointer.x * 1.6 + idleX;
-      camera.position.y = 2.6 - currentPointer.y * 0.9 + idleY;
+      camera.position.y = LOOK_AT_Y - currentPointer.y * 0.9 + idleY;
       camera.rotation.z = -currentPointer.x * 0.025;
       camera.lookAt(lookTarget);
 
@@ -338,23 +262,22 @@ export default function ThreeBackground() {
       camera.aspect = mount.clientWidth / mount.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mount.clientWidth, mount.clientHeight);
+      layerMeshes.forEach(fitLayer);
     };
     window.addEventListener("resize", handleResize);
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("pointermove", handlePointerMove);
       mount.removeChild(renderer.domElement);
-      waterGeometry.dispose();
       starGeometry.dispose();
-      dustGeometry.dispose();
       fireflyGeometry.dispose();
-      glowTexture.dispose();
-      treeTexture.dispose();
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
+          if (obj.material.map) obj.material.map.dispose();
           if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
           else obj.material.dispose();
         }
