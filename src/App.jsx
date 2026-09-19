@@ -651,28 +651,20 @@ export default function App() {
       {/* Wallpaper: dark gradient base */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-10%,#232438_0%,#11111b_55%)]" />
 
-      {/* Subtle dot-grid texture */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.15]"
-        style={{
-          backgroundImage: "radial-gradient(rgba(205,214,244,0.5) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
-
-      {/* Wallpaper art — headset / support-chat motif, blended into the rice desktop */}
+      {/* Wallpaper photo — calm moonlit horizon, dimmed to sit behind the desktop UI */}
       <img
-        src="/wallpaper.svg"
+        src="/calm-background.jpg"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-screen"
+        className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-55"
       />
+      <div className="pointer-events-none absolute inset-0 bg-[#11111b]/55" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,27,0.35)_0%,rgba(17,17,27,0)_35%,rgba(17,17,27,0.55)_100%)]" />
 
       {/* Ambient neon glow orbs */}
-      <div className="pointer-events-none absolute -top-32 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#cba6f7]/20 blur-[110px]" />
-      <div className="pointer-events-none absolute top-1/2 -left-24 w-96 h-96 rounded-full bg-[#89b4fa]/20 blur-[110px]" />
-      <div className="pointer-events-none absolute -bottom-32 right-1/4 w-[26rem] h-[26rem] rounded-full bg-[#94e2d5]/15 blur-[110px]" />
-      <div className="pointer-events-none absolute bottom-10 left-1/3 w-72 h-72 rounded-full bg-[#f5c2e7]/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -top-32 -right-20 w-[28rem] h-[28rem] rounded-full bg-[#cba6f7]/15 blur-[110px]" />
+      <div className="pointer-events-none absolute top-1/2 -left-24 w-96 h-96 rounded-full bg-[#89b4fa]/15 blur-[110px]" />
+      <div className="pointer-events-none absolute -bottom-32 right-1/4 w-[26rem] h-[26rem] rounded-full bg-[#94e2d5]/10 blur-[110px]" />
 
       {/* Desktop icons — freely draggable anywhere on the desktop */}
       <div className="absolute inset-0 pb-14">
