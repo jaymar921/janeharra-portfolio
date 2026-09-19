@@ -38,6 +38,78 @@ function buildGlowTexture() {
   return tex;
 }
 
+// A flat, hand-drawn tree-on-an-island silhouette, used as a 2D billboard
+// inside the 3D scene so it still tilts and reflects like everything else.
+function buildTreeIslandTexture() {
+  const w = 640;
+  const h = 560;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  const cx = w / 2;
+  const baseY = h - 150;
+
+  // island mound
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY, 190, 46, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#05070d";
+  ctx.fill();
+
+  // trunk
+  ctx.beginPath();
+  ctx.moveTo(cx - 10, baseY - 10);
+  ctx.quadraticCurveTo(cx - 22, baseY - 160, cx - 6, baseY - 260);
+  ctx.lineTo(cx + 10, baseY - 258);
+  ctx.quadraticCurveTo(cx + 16, baseY - 150, cx + 12, baseY - 10);
+  ctx.closePath();
+  ctx.fillStyle = "#04060a";
+  ctx.fill();
+
+  // canopy (irregular overlapping puffs for an organic silhouette)
+  const puffs = [
+    [cx, baseY - 300, 115],
+    [cx + 80, baseY - 270, 70],
+    [cx - 90, baseY - 275, 68],
+    [cx + 25, baseY - 350, 62],
+    [cx - 35, baseY - 345, 60],
+    [cx, baseY - 250, 90],
+  ];
+  ctx.fillStyle = "#03060a";
+  puffs.forEach(([px, py, r]) => {
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // soft moonlit rim light along the upper-right edge of the canopy
+  ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  const rim = ctx.createRadialGradient(cx + 150, baseY - 420, 20, cx + 60, baseY - 300, 260);
+  rim.addColorStop(0, "rgba(180,195,255,0.55)");
+  rim.addColorStop(0.4, "rgba(150,170,230,0.12)");
+  rim.addColorStop(1, "rgba(150,170,230,0)");
+  ctx.fillStyle = rim;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // grass tufts at the base
+  ctx.strokeStyle = "#05070d";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 10; i++) {
+    const gx = cx - 150 + i * 32 + (Math.random() - 0.5) * 10;
+    ctx.beginPath();
+    ctx.moveTo(gx, baseY + 6);
+    ctx.quadraticCurveTo(gx + 6, baseY - 14, gx + 14, baseY - 4);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return { texture: tex, aspect: w / h };
+}
+
 export default function ThreeBackground() {
   const mountRef = useRef(null);
   const [webglOk] = useState(supportsWebGL);
@@ -51,13 +123,14 @@ export default function ThreeBackground() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      42,
+      55,
       mount.clientWidth / mount.clientHeight,
       0.1,
       200
     );
-    camera.position.set(0, 2.6, 15);
-    camera.lookAt(0, 2, 0);
+    const lookTarget = new THREE.Vector3(0, 2, 0);
+    camera.position.set(0, 2.6, 14);
+    camera.lookAt(lookTarget);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -68,12 +141,6 @@ export default function ThreeBackground() {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
-
-    /* ---------------- lighting ---------------- */
-    const moonLight = new THREE.DirectionalLight(0xaebfff, 1.1);
-    moonLight.position.set(4, 6, -2);
-    scene.add(moonLight);
-    scene.add(new THREE.AmbientLight(0x39406b, 0.9));
 
     /* ---------------- water (reflective) ---------------- */
     const waterGeometry = new THREE.PlaneGeometry(200, 200);
@@ -87,65 +154,27 @@ export default function ThreeBackground() {
     water.position.y = 0;
     scene.add(water);
 
-    // subtle tint layer above the reflector so it reads as dark tropical water
     const waterTint = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshBasicMaterial({
-        color: 0x11224a,
-        transparent: true,
-        opacity: 0.35,
-      })
+      new THREE.MeshBasicMaterial({ color: 0x11224a, transparent: true, opacity: 0.35 })
     );
     waterTint.rotation.x = -Math.PI / 2;
     waterTint.position.y = 0.001;
     scene.add(waterTint);
 
-    /* ---------------- island ---------------- */
-    const island = new THREE.Group();
-    const islandMound = new THREE.Mesh(
-      new THREE.ConeGeometry(1.7, 0.9, 7, 1),
-      new THREE.MeshStandardMaterial({ color: 0x05070d, roughness: 1 })
+    /* ---------------- flat 2D tree-on-island billboard ---------------- */
+    const { texture: treeTexture, aspect: treeAspect } = buildTreeIslandTexture();
+    const treeHeight = 4.4;
+    const treeWidth = treeHeight * treeAspect;
+    const treeGroup = new THREE.Group();
+    treeGroup.position.set(0, treeHeight / 2 - 0.55, -0.5);
+    scene.add(treeGroup);
+
+    const treeBillboard = new THREE.Mesh(
+      new THREE.PlaneGeometry(treeWidth, treeHeight),
+      new THREE.MeshBasicMaterial({ map: treeTexture, transparent: true })
     );
-    islandMound.position.y = 0.35;
-    islandMound.rotation.y = 0.4;
-    island.add(islandMound);
-    scene.add(island);
-
-    /* ---------------- tree (swaying in the breeze) ---------------- */
-    const tree = new THREE.Group();
-    tree.position.y = 0.75;
-    island.add(tree);
-
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.09, 0.16, 1.9, 6),
-      new THREE.MeshStandardMaterial({ color: 0x04060a, roughness: 1 })
-    );
-    trunk.position.y = 0.95;
-    trunk.rotation.z = 0.06;
-    tree.add(trunk);
-
-    const foliageGroup = new THREE.Group();
-    foliageGroup.position.y = 1.9;
-    tree.add(foliageGroup);
-
-    const foliageMaterial = new THREE.MeshStandardMaterial({
-      color: 0x030603,
-      roughness: 1,
-      flatShading: true,
-    });
-    const foliagePuffs = [
-      [0, 0, 0, 1.05],
-      [0.65, 0.12, 0.1, 0.62],
-      [-0.7, 0.08, -0.15, 0.6],
-      [0.15, 0.3, 0.55, 0.55],
-      [-0.2, 0.25, -0.55, 0.58],
-      [0.05, -0.15, 0, 0.8],
-    ];
-    foliagePuffs.forEach(([x, y, z, s]) => {
-      const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), foliageMaterial);
-      puff.position.set(x, y, z);
-      foliageGroup.add(puff);
-    });
+    treeGroup.add(treeBillboard);
 
     /* ---------------- moon ---------------- */
     const moon = new THREE.Mesh(
@@ -170,7 +199,7 @@ export default function ThreeBackground() {
     moonGlow.position.copy(moon.position);
     scene.add(moonGlow);
 
-    /* ---------------- stars ---------------- */
+    /* ---------------- stars (far layer) ---------------- */
     const starCount = isSmall ? 260 : 480;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
@@ -193,8 +222,31 @@ export default function ThreeBackground() {
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
 
+    /* ---------------- fireflies (near layer, warm flicker) ---------------- */
+    const fireflyCount = isSmall ? 22 : 40;
+    const fireflyGeometry = new THREE.BufferGeometry();
+    const fireflyPositions = new Float32Array(fireflyCount * 3);
+    const fireflySeeds = new Float32Array(fireflyCount);
+    for (let i = 0; i < fireflyCount; i++) {
+      fireflyPositions[i * 3] = (Math.random() - 0.5) * 5.5;
+      fireflyPositions[i * 3 + 1] = Math.random() * 2.2 + 0.15;
+      fireflyPositions[i * 3 + 2] = Math.random() * 2.5 + 0.5;
+      fireflySeeds[i] = Math.random() * Math.PI * 2;
+    }
+    fireflyGeometry.setAttribute("position", new THREE.BufferAttribute(fireflyPositions, 3));
+    const fireflyMaterial = new THREE.PointsMaterial({
+      color: 0xd7f9a6,
+      size: 0.075,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const fireflies = new THREE.Points(fireflyGeometry, fireflyMaterial);
+    scene.add(fireflies);
+
     /* ---------------- drifting air particles (visible breeze) ---------------- */
-    const dustCount = isSmall ? 40 : 80;
+    const dustCount = isSmall ? 36 : 70;
     const dustGeometry = new THREE.BufferGeometry();
     const dustPositions = new Float32Array(dustCount * 3);
     const dustSeeds = new Float32Array(dustCount);
@@ -209,12 +261,24 @@ export default function ThreeBackground() {
       color: 0xcfe0ff,
       size: 0.045,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.5,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
     const dust = new THREE.Points(dustGeometry, dustMaterial);
     scene.add(dust);
+
+    /* ---------------- pointer / drag parallax tilt ---------------- */
+    const targetPointer = { x: 0, y: 0 };
+    const currentPointer = { x: 0, y: 0 };
+
+    const handlePointerMove = (e) => {
+      const nx = (e.clientX / window.innerWidth) * 2 - 1;
+      const ny = (e.clientY / window.innerHeight) * 2 - 1;
+      targetPointer.x = THREE.MathUtils.clamp(nx, -1, 1);
+      targetPointer.y = THREE.MathUtils.clamp(ny, -1, 1);
+    };
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
 
     /* ---------------- animation loop ---------------- */
     const clock = new THREE.Clock();
@@ -223,29 +287,46 @@ export default function ThreeBackground() {
     const animate = () => {
       const t = clock.getElapsedTime();
 
-      // breeze: gentle sway on the foliage + a softer sway on the whole tree
-      foliageGroup.rotation.z = Math.sin(t * 1.1) * 0.06 + Math.sin(t * 0.37) * 0.02;
-      foliageGroup.rotation.x = Math.cos(t * 0.8) * 0.03;
-      tree.rotation.z = Math.sin(t * 0.6) * 0.015;
+      // breeze: gentle paper-like sway on the flat tree billboard
+      treeGroup.rotation.z = Math.sin(t * 1.1) * 0.035 + Math.sin(t * 0.37) * 0.012;
+      treeGroup.rotation.y = Math.sin(t * 0.5) * 0.02;
 
       // drifting dust / visible air
-      const positions = dustGeometry.attributes.position.array;
+      const dustPos = dustGeometry.attributes.position.array;
       for (let i = 0; i < dustCount; i++) {
         const seed = dustSeeds[i];
-        positions[i * 3] += Math.sin(t * 0.5 + seed) * 0.0025;
-        positions[i * 3 + 1] += 0.0018;
-        positions[i * 3 + 2] += Math.cos(t * 0.4 + seed) * 0.0015;
-        if (positions[i * 3 + 1] > 4.4) positions[i * 3 + 1] = 0.1;
+        dustPos[i * 3] += Math.sin(t * 0.5 + seed) * 0.0025;
+        dustPos[i * 3 + 1] += 0.0018;
+        dustPos[i * 3 + 2] += Math.cos(t * 0.4 + seed) * 0.0015;
+        if (dustPos[i * 3 + 1] > 4.4) dustPos[i * 3 + 1] = 0.1;
       }
       dustGeometry.attributes.position.needsUpdate = true;
+
+      // fireflies: slow wander + individual flicker
+      const flyPos = fireflyGeometry.attributes.position.array;
+      for (let i = 0; i < fireflyCount; i++) {
+        const seed = fireflySeeds[i];
+        flyPos[i * 3] += Math.sin(t * 0.6 + seed) * 0.0016;
+        flyPos[i * 3 + 1] += Math.cos(t * 0.9 + seed * 1.3) * 0.0014;
+        flyPos[i * 3 + 2] += Math.sin(t * 0.4 + seed * 0.7) * 0.001;
+      }
+      fireflyGeometry.attributes.position.needsUpdate = true;
+      fireflyMaterial.opacity = 0.55 + Math.sin(t * 3 + fireflySeeds[0]) * 0.25;
 
       // twinkle
       starMaterial.opacity = 0.7 + Math.sin(t * 0.8) * 0.12;
 
-      // slow living camera drift
-      camera.position.x = Math.sin(t * 0.06) * 0.6;
-      camera.position.y = 2.6 + Math.sin(t * 0.15) * 0.08;
-      camera.lookAt(0, 2, 0);
+      // smooth pointer / drag driven parallax tilt, blended with a gentle idle drift
+      currentPointer.x += (targetPointer.x - currentPointer.x) * 0.055;
+      currentPointer.y += (targetPointer.y - currentPointer.y) * 0.055;
+
+      const idleX = Math.sin(t * 0.08) * 0.25;
+      const idleY = Math.sin(t * 0.12) * 0.1;
+
+      camera.position.x = currentPointer.x * 1.6 + idleX;
+      camera.position.y = 2.6 - currentPointer.y * 0.9 + idleY;
+      camera.rotation.z = -currentPointer.x * 0.025;
+      camera.lookAt(lookTarget);
 
       renderer.render(scene, camera);
       frameId = requestAnimationFrame(animate);
@@ -263,11 +344,14 @@ export default function ThreeBackground() {
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("pointermove", handlePointerMove);
       mount.removeChild(renderer.domElement);
       waterGeometry.dispose();
       starGeometry.dispose();
       dustGeometry.dispose();
+      fireflyGeometry.dispose();
       glowTexture.dispose();
+      treeTexture.dispose();
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
